@@ -1,0 +1,33 @@
+# Binaries
+hyperliquid-mcp-go
+*.exe
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# Test artifacts
+*.test
+*.out
+coverage.html
+
+# Go workspace
+go.work
+go.work.sum
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Editor
+.idea/
+.vscode/
+*.swp
+
+# Local-only design/parity docs, task plans, and the golden schema fixture
+# (untracked 2026-09-04; parity tests skip when the fixture is absent)
+docs/
+tasks/
+testdata/
