@@ -81,6 +81,55 @@ Example MCP client config:
 }
 ```
 
+## Available tools
+
+All 23 tools of the Python server (same names, input schemas, and response shapes), plus 2 HIP-3 read extensions — 25 total.
+
+**Account**
+
+- `hyperliquid_get_account_info` — perpetual account summary: positions and margin
+- `hyperliquid_get_positions` — open positions with margin summary
+- `hyperliquid_get_balance` — account balance and withdrawable amount
+
+**Orders**
+
+- `hyperliquid_place_order` — place a single order (minimum value $10; use asset index from `get_meta`)
+- `hyperliquid_place_bracket_order` — entry + take-profit + stop-loss in one atomic batch (TP/SL auto reduce-only triggers)
+- `hyperliquid_cancel_order` — cancel a specific order by coin name and order ID (`oid`)
+- `hyperliquid_cancel_all_orders` — cancel all open orders for the user
+- `hyperliquid_modify_order` — modify an existing order
+- `hyperliquid_place_twap_order`, `hyperliquid_cancel_twap_order` — listed for parity; both are stubs that always fail, same as the Python reference
+
+**Order queries**
+
+- `hyperliquid_get_open_orders` — currently open orders
+- `hyperliquid_get_order_status` — status of a specific order by `oid`
+- `hyperliquid_get_user_fills` — historical trade fills
+- `hyperliquid_get_user_funding` — funding payment history
+
+**Market data**
+
+- `hyperliquid_get_meta` — exchange metadata: asset indices, names, max leverage (maps coin names to asset indices)
+- `hyperliquid_get_all_mids` — current mid prices for all assets
+- `hyperliquid_get_order_book` — L2 order book (market depth) for an asset
+- `hyperliquid_get_recent_trades` — recent trades for an asset
+- `hyperliquid_get_historical_funding` — historical funding rates for an asset
+- `hyperliquid_get_candles` — candle/OHLCV data for an asset
+
+**Vaults**
+
+- `hyperliquid_vault_details` — detailed information about a specific vault
+- `hyperliquid_vault_performance` — performance metrics for a specific vault
+
+**Utility**
+
+- `hyperliquid_get_server_time` — estimated server time
+
+**HIP-3 extensions** (beyond parity — details below)
+
+- `hyperliquid_get_perp_dexs` — list builder-deployed perp DEXs with their `perpDexIndex`
+- `hyperliquid_get_dex_meta` — a builder DEX's asset universe (`dex` defaults to `xyz`)
+
 ## HIP-3 builder perp DEXs (extension)
 
 Beyond parity: read-only access to Hyperliquid's
