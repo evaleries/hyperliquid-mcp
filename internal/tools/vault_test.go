@@ -1,10 +1,6 @@
 package tools
 
-import (
-	"encoding/json"
-	"reflect"
-	"testing"
-)
+import "testing"
 
 // testVaultAddress is a 42-character hexadecimal address fixture.
 const testVaultAddress = "0x1713904a06694c11bd81a2b16d6a41fe6b9a5044"
@@ -259,51 +255,5 @@ func TestVaultPerformanceAPIFailure(t *testing.T) {
 	// arguments echo carries the normalized integer (Python parity).
 	if argsEnv["startTime"] != 123.0 {
 		t.Errorf("arguments echo: %v", argsEnv)
-	}
-}
-
-// TestVaultUtilGoldenSchemaParity checks the slice's tools against the Python
-// golden fixture directly, since TestGoldenSchemaParity only sees All() once
-// the groups are integrated into tools.go.
-func TestVaultUtilGoldenSchemaParity(t *testing.T) {
-	raw := readGoldenFixture(t)
-	var golden []map[string]any
-	if err := json.Unmarshal(raw, &golden); err != nil {
-		t.Fatalf("parse golden fixture: %v", err)
-	}
-	goldenByName := make(map[string]map[string]any, len(golden))
-	for _, g := range golden {
-		goldenByName[g["name"].(string)] = g
-	}
-
-	// Handlers are never invoked; a nil client is safe here (see
-	// TestGoldenSchemaParity).
-	registered := append(vaultTools(nil), utilTools(nil)...)
-	if len(registered) != 3 {
-		t.Fatalf("registered %d tools, want 3", len(registered))
-	}
-	for _, st := range registered {
-		b, err := json.Marshal(st.Tool)
-		if err != nil {
-			t.Fatalf("marshal tool %s: %v", st.Tool.Name, err)
-		}
-		var got map[string]any
-		if err := json.Unmarshal(b, &got); err != nil {
-			t.Fatalf("normalize tool %s: %v", st.Tool.Name, err)
-		}
-		name := got["name"].(string)
-		want, ok := goldenByName[name]
-		if !ok {
-			t.Errorf("tool %s not present in Python golden set", name)
-			continue
-		}
-		if got["description"] != want["description"] {
-			t.Errorf("tool %s description drift:\n got: %v\nwant: %v", name, got["description"], want["description"])
-		}
-		if !reflect.DeepEqual(normalizeJSON(got["inputSchema"]), normalizeJSON(want["inputSchema"])) {
-			gotSchema, _ := json.MarshalIndent(got["inputSchema"], "", "  ")
-			wantSchema, _ := json.MarshalIndent(want["inputSchema"], "", "  ")
-			t.Errorf("tool %s inputSchema drift:\n got: %s\nwant: %s", name, gotSchema, wantSchema)
-		}
 	}
 }

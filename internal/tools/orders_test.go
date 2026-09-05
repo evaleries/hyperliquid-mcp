@@ -1,8 +1,6 @@
 package tools
 
 import (
-	"encoding/json"
-	"reflect"
 	"strings"
 	"testing"
 )
@@ -71,62 +69,6 @@ func assertSignedPayload(t *testing.T, fake *fakeAPI) {
 // limitGtcWire is the wire form of the default order type.
 func limitGtcWire() map[string]any {
 	return map[string]any{"limit": map[string]any{"tif": "Gtc"}}
-}
-
-func TestOrderSchemaParity(t *testing.T) {
-	raw := readGoldenFixture(t)
-	var golden []map[string]any
-	if err := json.Unmarshal(raw, &golden); err != nil {
-		t.Fatalf("parse golden fixture: %v", err)
-	}
-	goldenByName := make(map[string]map[string]any, len(golden))
-	for _, g := range golden {
-		goldenByName[g["name"].(string)] = g
-	}
-
-	wantOrder := []string{
-		"hyperliquid_place_order",
-		"hyperliquid_place_bracket_order",
-		"hyperliquid_cancel_order",
-		"hyperliquid_cancel_all_orders",
-		"hyperliquid_modify_order",
-		"hyperliquid_place_twap_order",
-		"hyperliquid_cancel_twap_order",
-	}
-	// Handlers are never invoked; a nil client is safe here.
-	tools := orderTools(nil)
-	tools = append(tools, twapTools()...)
-	if len(tools) != len(wantOrder) {
-		t.Fatalf("registered %d order tools, want %d", len(tools), len(wantOrder))
-	}
-	for i, st := range tools {
-		if st.Tool.Name != wantOrder[i] {
-			t.Errorf("tool %d = %s, want %s (Python list_tools order)", i, st.Tool.Name, wantOrder[i])
-		}
-	}
-	for _, st := range tools {
-		b, err := json.Marshal(st.Tool)
-		if err != nil {
-			t.Fatalf("marshal tool %s: %v", st.Tool.Name, err)
-		}
-		var m map[string]any
-		if err := json.Unmarshal(b, &m); err != nil {
-			t.Fatalf("normalize tool %s: %v", st.Tool.Name, err)
-		}
-		want, ok := goldenByName[st.Tool.Name]
-		if !ok {
-			t.Errorf("tool %s not present in Python golden set", st.Tool.Name)
-			continue
-		}
-		if m["description"] != want["description"] {
-			t.Errorf("tool %s description drift:\n got: %v\nwant: %v", st.Tool.Name, m["description"], want["description"])
-		}
-		if !reflect.DeepEqual(normalizeJSON(m["inputSchema"]), normalizeJSON(want["inputSchema"])) {
-			gotSchema, _ := json.MarshalIndent(m["inputSchema"], "", "  ")
-			wantSchema, _ := json.MarshalIndent(want["inputSchema"], "", "  ")
-			t.Errorf("tool %s inputSchema drift:\n got: %s\nwant: %s", st.Tool.Name, gotSchema, wantSchema)
-		}
-	}
 }
 
 func TestPlaceOrder(t *testing.T) {
@@ -643,7 +585,7 @@ func TestModifyOrder(t *testing.T) {
 		t.Errorf("modifiedOrder = %v, want %v", out["modifiedOrder"], wantModified)
 	}
 
-	// Wire: the Python SDK's modify_order delegates to bulk_modify_orders.
+	// Wire: the Python SDK's modify_order delegates to bulk_modify_orders_new.
 	action := exchangeAction(t, fake)
 	wantAction := map[string]any{
 		"type": "batchModify",

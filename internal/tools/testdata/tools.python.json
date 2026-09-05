@@ -1,0 +1,558 @@
+[
+  {
+    "name": "hyperliquid_get_account_info",
+    "description": "Get user's perpetual account summary including positions and margin",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "userAddress": {
+          "type": "string",
+          "description": "User address (optional, defaults to configured account)"
+        },
+        "dex": {
+          "type": "string",
+          "description": "Perp dex name (optional, defaults to empty string)",
+          "default": ""
+        }
+      }
+    }
+  },
+  {
+    "name": "hyperliquid_get_positions",
+    "description": "Get user's open positions with margin summary",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "userAddress": {
+          "type": "string",
+          "description": "User address (optional, defaults to configured account)"
+        },
+        "dex": {
+          "type": "string",
+          "description": "Perp dex name (optional, defaults to empty string)",
+          "default": ""
+        }
+      }
+    }
+  },
+  {
+    "name": "hyperliquid_get_balance",
+    "description": "Get user's account balance and withdrawable amount",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "userAddress": {
+          "type": "string",
+          "description": "User address (optional, defaults to configured account)"
+        },
+        "dex": {
+          "type": "string",
+          "description": "Perp dex name (optional, defaults to empty string)",
+          "default": ""
+        }
+      }
+    }
+  },
+  {
+    "name": "hyperliquid_place_order",
+    "description": "Place a single order on Hyperliquid. Minimum order value is $10. Use asset index from get_meta (e.g., 0=BTC, 1=ETH, 5=SOL).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "integer",
+          "description": "Asset index (e.g., 0 for BTC, 1 for ETH, 5 for SOL). Use hyperliquid_get_meta to get the full list.",
+          "minimum": 0
+        },
+        "isBuy": {
+          "type": "boolean",
+          "description": "True for buy/long orders, false for sell/short orders"
+        },
+        "size": {
+          "type": "string",
+          "description": "Order size/quantity as a string (e.g., '0.1' for 0.1 BTC). Ensure size * price >= $10."
+        },
+        "price": {
+          "type": "string",
+          "description": "Limit price as a string (e.g., '181.5'). Set to '0' for market orders."
+        },
+        "reduceOnly": {
+          "type": "boolean",
+          "description": "Whether this is a reduce-only order (only closes existing positions)",
+          "default": false
+        },
+        "orderType": {
+          "type": "object",
+          "description": "Order type configuration. For limit orders use {limit: {tif: 'Gtc'}}. For trigger orders use {trigger: {isMarket: false, triggerPx: 'price', tpsl: 'tp' or 'sl'}}",
+          "default": {
+            "limit": {
+              "tif": "Gtc"
+            }
+          }
+        },
+        "cloid": {
+          "type": "string",
+          "description": "Client order ID (optional, for tracking)"
+        }
+      },
+      "required": [
+        "asset",
+        "isBuy",
+        "size"
+      ]
+    }
+  },
+  {
+    "name": "hyperliquid_place_bracket_order",
+    "description": "Place a complete bracket order (entry + take profit + stop loss) in a single atomic batch. Minimum order value is $10. The TP and SL orders are automatically set as reduce-only and trigger orders.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "integer",
+          "description": "Asset index (e.g., 0 for BTC, 1 for ETH, 5 for SOL)",
+          "minimum": 0
+        },
+        "isBuy": {
+          "type": "boolean",
+          "description": "True for buy/long positions, false for sell/short positions"
+        },
+        "size": {
+          "type": "string",
+          "description": "Position size as a string (e.g., '4.96' for 4.96 SOL)"
+        },
+        "entryPrice": {
+          "type": "string",
+          "description": "Entry limit price as a string (e.g., '181.5'). Set to '0' for market entry."
+        },
+        "takeProfitPrice": {
+          "type": "string",
+          "description": "Take profit trigger price. For long: above entry. For short: below entry."
+        },
+        "stopLossPrice": {
+          "type": "string",
+          "description": "Stop loss trigger price. For long: below entry. For short: above entry."
+        },
+        "reduceOnly": {
+          "type": "boolean",
+          "description": "Whether the ENTRY order is reduce-only (usually false)",
+          "default": false
+        },
+        "entryOrderType": {
+          "type": "object",
+          "description": "Entry order type configuration",
+          "default": {
+            "limit": {
+              "tif": "Gtc"
+            }
+          }
+        }
+      },
+      "required": [
+        "asset",
+        "isBuy",
+        "size",
+        "takeProfitPrice",
+        "stopLossPrice"
+      ]
+    }
+  },
+  {
+    "name": "hyperliquid_cancel_order",
+    "description": "Cancel a specific order by coin name and order ID (oid). Always use oid for cancellation.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "coin": {
+          "type": "string",
+          "description": "Coin/asset name (e.g., 'BTC', 'ETH', 'SOL')"
+        },
+        "oid": {
+          "type": "integer",
+          "description": "Order ID (oid) - the unique order identifier returned when order was placed"
+        }
+      },
+      "required": [
+        "coin",
+        "oid"
+      ]
+    }
+  },
+  {
+    "name": "hyperliquid_cancel_all_orders",
+    "description": "Cancel all open orders for the user. Fetches all open orders and cancels them.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "userAddress": {
+          "type": "string",
+          "description": "User address (optional, defaults to configured account)"
+        },
+        "dex": {
+          "type": "string",
+          "description": "Perp dex name (optional)",
+          "default": ""
+        }
+      }
+    }
+  },
+  {
+    "name": "hyperliquid_modify_order",
+    "description": "Modify an existing order",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "oid": {
+          "type": "integer",
+          "description": "Order ID to modify"
+        },
+        "coin": {
+          "type": "string",
+          "description": "Coin/asset name (e.g., 'BTC', 'ETH', 'SOL')"
+        },
+        "isBuy": {
+          "type": "boolean",
+          "description": "True for buy orders, false for sell orders"
+        },
+        "size": {
+          "type": "string",
+          "description": "New order size"
+        },
+        "price": {
+          "type": "string",
+          "description": "New limit price"
+        },
+        "reduceOnly": {
+          "type": "boolean",
+          "description": "Whether this is a reduce-only order",
+          "default": false
+        },
+        "orderType": {
+          "type": "object",
+          "description": "Order type configuration",
+          "default": {
+            "limit": {
+              "tif": "Gtc"
+            }
+          }
+        }
+      },
+      "required": [
+        "oid",
+        "coin",
+        "isBuy",
+        "size",
+        "price"
+      ]
+    }
+  },
+  {
+    "name": "hyperliquid_place_twap_order",
+    "description": "Place a Time-Weighted Average Price (TWAP) order",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "coin": {
+          "type": "string",
+          "description": "Coin/asset name (e.g., 'BTC', 'ETH', 'SOL')"
+        },
+        "isBuy": {
+          "type": "boolean",
+          "description": "True for buy orders, false for sell orders"
+        },
+        "size": {
+          "type": "string",
+          "description": "Total order size to be executed over time"
+        },
+        "minutes": {
+          "type": "integer",
+          "description": "Duration in minutes for TWAP execution",
+          "minimum": 2
+        },
+        "reduceOnly": {
+          "type": "boolean",
+          "description": "Whether this is a reduce-only order",
+          "default": false
+        },
+        "randomize": {
+          "type": "boolean",
+          "description": "Whether to randomize TWAP intervals",
+          "default": true
+        }
+      },
+      "required": [
+        "coin",
+        "isBuy",
+        "size",
+        "minutes"
+      ]
+    }
+  },
+  {
+    "name": "hyperliquid_cancel_twap_order",
+    "description": "Cancel a TWAP order by its ID",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "twapId": {
+          "type": "integer",
+          "description": "TWAP order ID to cancel"
+        }
+      },
+      "required": [
+        "twapId"
+      ]
+    }
+  },
+  {
+    "name": "hyperliquid_get_open_orders",
+    "description": "Get user's currently open orders",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "userAddress": {
+          "type": "string",
+          "description": "User address (optional, defaults to configured account)"
+        },
+        "dex": {
+          "type": "string",
+          "description": "Perp dex name (optional)",
+          "default": ""
+        }
+      }
+    }
+  },
+  {
+    "name": "hyperliquid_get_order_status",
+    "description": "Get the status of a specific order by oid",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "userAddress": {
+          "type": "string",
+          "description": "User address (optional, defaults to configured account)"
+        },
+        "oid": {
+          "type": "integer",
+          "description": "Order ID"
+        }
+      },
+      "required": [
+        "oid"
+      ]
+    }
+  },
+  {
+    "name": "hyperliquid_get_user_fills",
+    "description": "Get user's historical trade fills",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "userAddress": {
+          "type": "string",
+          "description": "User address (optional, defaults to configured account)"
+        },
+        "startTime": {
+          "type": "integer",
+          "description": "Start time in milliseconds (required)"
+        },
+        "endTime": {
+          "type": "integer",
+          "description": "End time in milliseconds (optional, defaults to current time)"
+        },
+        "aggregateByTime": {
+          "type": "boolean",
+          "description": "Whether to aggregate partial fills by time",
+          "default": false
+        }
+      },
+      "required": [
+        "startTime"
+      ]
+    }
+  },
+  {
+    "name": "hyperliquid_get_user_funding",
+    "description": "Get user's funding payment history",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "userAddress": {
+          "type": "string",
+          "description": "User address (optional, defaults to configured account)"
+        },
+        "startTime": {
+          "type": "integer",
+          "description": "Start time in milliseconds (required)"
+        },
+        "endTime": {
+          "type": "integer",
+          "description": "End time in milliseconds (optional, defaults to current time)"
+        }
+      },
+      "required": [
+        "startTime"
+      ]
+    }
+  },
+  {
+    "name": "hyperliquid_get_meta",
+    "description": "Get exchange metadata including all available trading assets with their indices, names, max leverage, and trading parameters. Essential for mapping coin names to asset indices.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "hyperliquid_get_all_mids",
+    "description": "Get current mid prices for all assets",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "hyperliquid_get_order_book",
+    "description": "Get order book (market depth) for a specific asset",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "coin": {
+          "type": "string",
+          "description": "Asset symbol (e.g., 'BTC', 'ETH', 'SOL')"
+        }
+      },
+      "required": [
+        "coin"
+      ]
+    }
+  },
+  {
+    "name": "hyperliquid_get_recent_trades",
+    "description": "Get recent trades for a specific asset",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "coin": {
+          "type": "string",
+          "description": "Asset symbol (e.g., 'BTC', 'ETH', 'SOL')"
+        }
+      },
+      "required": [
+        "coin"
+      ]
+    }
+  },
+  {
+    "name": "hyperliquid_get_historical_funding",
+    "description": "Get historical funding rates for an asset",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "coin": {
+          "type": "string",
+          "description": "Asset symbol (e.g., 'BTC', 'ETH', 'SOL')"
+        },
+        "startTime": {
+          "type": "integer",
+          "description": "Start time in milliseconds"
+        },
+        "endTime": {
+          "type": "integer",
+          "description": "End time in milliseconds (optional, defaults to current time)"
+        }
+      },
+      "required": [
+        "coin",
+        "startTime"
+      ]
+    }
+  },
+  {
+    "name": "hyperliquid_get_candles",
+    "description": "Get historical candle/OHLCV data for an asset",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "coin": {
+          "type": "string",
+          "description": "Asset symbol (e.g., 'BTC', 'ETH', 'SOL')"
+        },
+        "interval": {
+          "type": "string",
+          "description": "Candle interval",
+          "enum": [
+            "1m",
+            "5m",
+            "15m",
+            "1h",
+            "4h",
+            "1d"
+          ]
+        },
+        "startTime": {
+          "type": "integer",
+          "description": "Start time in milliseconds"
+        },
+        "endTime": {
+          "type": "integer",
+          "description": "End time in milliseconds (optional, defaults to current time)"
+        }
+      },
+      "required": [
+        "coin",
+        "interval",
+        "startTime"
+      ]
+    }
+  },
+  {
+    "name": "hyperliquid_vault_details",
+    "description": "Get detailed information about a specific vault",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "vaultAddress": {
+          "type": "string",
+          "description": "Vault address in 42-character hexadecimal format"
+        }
+      },
+      "required": [
+        "vaultAddress"
+      ]
+    }
+  },
+  {
+    "name": "hyperliquid_vault_performance",
+    "description": "Get performance metrics for a specific vault",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "vaultAddress": {
+          "type": "string",
+          "description": "Vault address in 42-character hexadecimal format"
+        },
+        "startTime": {
+          "type": "integer",
+          "description": "Start time in milliseconds"
+        },
+        "endTime": {
+          "type": "integer",
+          "description": "End time in milliseconds (optional, defaults to current time)"
+        }
+      },
+      "required": [
+        "vaultAddress",
+        "startTime"
+      ]
+    }
+  },
+  {
+    "name": "hyperliquid_get_server_time",
+    "description": "Get estimated server time",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  }
+]

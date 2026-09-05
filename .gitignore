@@ -26,8 +26,8 @@ go.work.sum
 .vscode/
 *.swp
 
-# Local-only design/parity docs, task plans, and the golden schema fixture
-# (untracked 2026-09-04; parity tests skip when the fixture is absent)
-docs/
-tasks/
-testdata/
+# Local-only design docs and task plans. Root-anchored on purpose: an
+# unanchored pattern also swallows nested fixture directories such as
+# internal/tools/testdata (the golden schema fixture is tracked).
+/docs/
+/tasks/

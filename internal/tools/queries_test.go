@@ -1,10 +1,6 @@
 package tools
 
-import (
-	"encoding/json"
-	"reflect"
-	"testing"
-)
+import "testing"
 
 // openOrdersFixture mirrors a real openOrders response, including a field
 // ("triggerCondition") the SDK structs would normalize, to prove data
@@ -504,58 +500,5 @@ func TestUserFundingErrorEnvelope(t *testing.T) {
 	}
 	if out["error"] == nil || out["error"] == "" {
 		t.Errorf("error field: %v", out["error"])
-	}
-}
-
-// TestQueryToolsSchemaParity checks this file's tools against the Python
-// golden fixture now, without waiting for the All() integration (the
-// project-wide TestGoldenSchemaParity gates the final wiring).
-func TestQueryToolsSchemaParity(t *testing.T) {
-	raw := readGoldenFixture(t)
-	var golden []map[string]any
-	if err := json.Unmarshal(raw, &golden); err != nil {
-		t.Fatalf("parse golden fixture: %v", err)
-	}
-	goldenByName := make(map[string]map[string]any, len(golden))
-	for _, g := range golden {
-		goldenByName[g["name"].(string)] = g
-	}
-
-	wantNames := []string{
-		"hyperliquid_get_open_orders",
-		"hyperliquid_get_order_status",
-		"hyperliquid_get_user_fills",
-		"hyperliquid_get_user_funding",
-	}
-	tools := queryTools(nil) // handlers are never invoked; nil client is safe
-	if len(tools) != len(wantNames) {
-		t.Fatalf("queryTools returned %d tools, want %d", len(tools), len(wantNames))
-	}
-	for i, name := range wantNames {
-		if tools[i].Tool.Name != name {
-			t.Errorf("tool %d = %s, want %s (Python list_tools order)", i, tools[i].Tool.Name, name)
-		}
-		st := findTool(t, tools, name)
-		b, err := json.Marshal(st.Tool)
-		if err != nil {
-			t.Fatalf("marshal tool %s: %v", name, err)
-		}
-		var m map[string]any
-		if err := json.Unmarshal(b, &m); err != nil {
-			t.Fatalf("normalize tool %s: %v", name, err)
-		}
-		want, ok := goldenByName[name]
-		if !ok {
-			t.Errorf("tool %s not present in Python golden set", name)
-			continue
-		}
-		if m["description"] != want["description"] {
-			t.Errorf("tool %s description drift:\n got: %q\nwant: %q", name, m["description"], want["description"])
-		}
-		if !reflect.DeepEqual(normalizeJSON(m["inputSchema"]), normalizeJSON(want["inputSchema"])) {
-			gotSchema, _ := json.MarshalIndent(m["inputSchema"], "", "  ")
-			wantSchema, _ := json.MarshalIndent(want["inputSchema"], "", "  ")
-			t.Errorf("tool %s inputSchema drift:\n got: %s\nwant: %s", name, gotSchema, wantSchema)
-		}
 	}
 }

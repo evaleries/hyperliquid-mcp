@@ -3,7 +3,6 @@ package tools
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -27,17 +26,19 @@ const testPrivateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d
 const testAccountAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 
 // readGoldenFixture loads the Python list_tools golden fixture. The fixture
-// is local-only (gitignored, regenerable from the reference server), so
-// parity tests skip when it is absent: fresh clones stay green while a
-// working copy holding the fixture still enforces the schema gate.
+// is tracked (it is derived from static literals in the reference server, so
+// it carries no secrets) and its absence is a hard failure: skipping would
+// turn the repo's parity gate into a no-op.
+//
+// Provenance: edkdev/hyperliquid-mcp @ 7f39651, src/hyperliquid_mcp/server.py,
+// list_tools() in declaration order. Regenerate by AST-extracting the
+// Tool(name=, description=, inputSchema=) literals from that function into
+// [{name, description, inputSchema}] with 2-space indent.
 func readGoldenFixture(t testing.TB) []byte {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join("testdata", "tools.python.json"))
-	if errors.Is(err, os.ErrNotExist) {
-		t.Skip("testdata/tools.python.json is local-only and not present; skipping schema parity test")
-	}
 	if err != nil {
-		t.Fatalf("read golden fixture: %v", err)
+		t.Fatalf("read golden fixture (the parity gate cannot run without it): %v", err)
 	}
 	return raw
 }

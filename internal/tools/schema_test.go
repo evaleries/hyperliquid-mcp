@@ -15,11 +15,16 @@ var extensionTools = map[string]bool{
 	"hyperliquid_get_dex_meta":  true,
 }
 
-// TestGoldenSchemaParity is the parity gate: the tools this
-// server registers must match the Python reference's list_tools output
-// (testdata/tools.python.json, generated from server.py) in name, description,
-// and inputSchema. Comparison is order-insensitive. Extension tools
-// (extensionTools) are validated structurally instead.
+// TestGoldenSchemaParity is the parity gate: the tools this server registers
+// must match the Python reference's list_tools output
+// (testdata/tools.python.json, extracted from server.py) in name,
+// description, and inputSchema. Extension tools (extensionTools) have no
+// golden counterpart and are validated structurally instead.
+//
+// Comparison is order-insensitive on purpose: mcp-go sorts tools by name
+// before answering tools/list (server.go: sort.Strings(toolNames)), so
+// registration order is not observable by a client and asserting it would
+// pin an internal detail.
 func TestGoldenSchemaParity(t *testing.T) {
 	raw := readGoldenFixture(t)
 	var golden []map[string]any
