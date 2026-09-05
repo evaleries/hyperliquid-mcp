@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      # The golden schema fixture (internal/tools/testdata/tools.python.json)
+      # is tracked, so the parity gate runs here — it fails, never skips, when
+      # a tool name, description, input schema, or list order drifts from the
+      # Python reference.
+      - name: Test
+        run: go test -race ./...
+
+      # Integration tests place live testnet orders and need a funded key;
+      # they stay manual. Compile them so they cannot rot silently.
+      - name: Build integration tests
+        run: go vet -tags=integration ./...
