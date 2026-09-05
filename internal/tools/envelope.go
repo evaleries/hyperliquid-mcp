@@ -148,21 +148,6 @@ func ParseOrderResponse(data map[string]any) (map[string]any, error) {
 	return ParseOrderStatus(first), nil
 }
 
-// StatusesOf extracts response.data.statuses as a slice of maps,
-// tolerating any missing level (Python dict.get chains).
-func StatusesOf(data map[string]any) []map[string]any {
-	response, _ := data["response"].(map[string]any)
-	respData, _ := response["data"].(map[string]any)
-	raw, _ := respData["statuses"].([]any)
-	out := make([]map[string]any, 0, len(raw))
-	for _, s := range raw {
-		if m, ok := s.(map[string]any); ok {
-			out = append(out, m)
-		}
-	}
-	return out
-}
-
 // OrderStatusToMap reconstructs the API wire shape of one order status from
 // the SDK's typed value, so the envelope's data field matches what the
 // Python server passes through.
