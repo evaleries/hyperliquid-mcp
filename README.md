@@ -5,11 +5,15 @@ A [Model Context Protocol](https://modelcontextprotocol.io/) server for [Hyperli
 This is a Go rewrite of the Python [`mcp-hyperliquid`](https://github.com/edkdev/hyperliquid-mcp) server. It gives AI assistants (Claude Desktop, Kiro, and other MCP clients) secure access to Hyperliquid's trading API over stdio.
 
 > **Status:** Parity release implemented — all 23 tools from the Python
-> reference are shipped, schemas verified against it by a golden test —
-> **plus HIP-3 extensions**: builder perp DEX discovery and dex-qualified meta
-> (`hyperliquid_get_perp_dexs`, `hyperliquid_get_dex_meta`). Remaining before
-> tagging: manual testnet smoke test (`go test -tags=integration ./...` with a
-> funded testnet key).
+> reference are shipped; their names, descriptions, and input schemas are
+> checked against its `list_tools()` output by a tracked golden fixture
+> (`TestGoldenSchemaParity`, run in CI) — **plus HIP-3 extensions**:
+> builder perp DEX discovery and dex-qualified meta
+> (`hyperliquid_get_perp_dexs`, `hyperliquid_get_dex_meta`). Behavior
+> differences are listed under
+> [Divergences from the Python reference](#divergences-from-the-python-reference).
+> Remaining before tagging: manual testnet smoke test
+> (`go test -tags=integration ./...` with a funded testnet key).
 
 ## Build & run
 
@@ -129,6 +133,45 @@ All 23 tools of the Python server (same names, input schemas, and response shape
 
 - `hyperliquid_get_perp_dexs` — list builder-deployed perp DEXs with their `perpDexIndex`
 - `hyperliquid_get_dex_meta` — a builder DEX's asset universe (`dex` defaults to `xyz`)
+
+## Divergences from the Python reference
+
+Parity is enforced on the MCP surface — tool names, descriptions, and input
+schemas are compared against the reference's `list_tools()` output by
+`TestGoldenSchemaParity` (fixture:
+`internal/tools/testdata/tools.python.json`, extracted from
+[`edkdev/hyperliquid-mcp`](https://github.com/edkdev/hyperliquid-mcp) @
+`7f39651`). Behavior diverges where the reference is broken or where an
+extension was added. Verified against `hyperliquid-python-sdk` 0.24.0; note
+the reference pins only `hyperliquid-python-sdk>=0.6.0`, so its own behavior
+is not version-stable.
+
+**Tools that always raise in the reference** (implemented for real here):
+
+| Tool | Reference outcome | This server |
+| --- | --- | --- |
+| `get_recent_trades` | `AttributeError` — `Info.recent_trades` does not exist | posts `recentTrades` |
+| `get_user_fills` | `TypeError` — `user_fills_by_time(address=…)` is called as `user=` | posts `userFillsByTime` |
+| `get_user_funding` | `AttributeError` — the SDK method is `user_funding_history`, not `user_funding` | posts `userFunding` |
+| `get_historical_funding` | `TypeError` — `funding_history(name, startTime, endTime)` is called with `coin=`/`start_time=`/`end_time=` | posts `fundingHistory` |
+| `get_candles` | `TypeError` — `candles_snapshot(name, interval, startTime, endTime)` is called with snake_case keywords | posts `candleSnapshot` |
+| `vault_details` | `AttributeError` — `Info.vault_details` does not exist | posts `vaultDetails` |
+| `vault_performance` | `AttributeError` — same missing method | posts `vaultDetails`; the endpoint takes no time range, so it is echoed in `summary` only |
+
+The two TWAP tools are listed and always fail in both implementations
+(`NotImplementedError` there, the same messages here).
+
+**Deliberate behavior differences:**
+
+| Area | Reference | This server |
+| --- | --- | --- |
+| Error results | error JSON as plain text content | same JSON, plus MCP `isError: true` |
+| `modify_order` on an API-level rejection | success envelope carrying `{"status":"err","response":<reason>}` | error envelope (the Go SDK surfaces a non-ok body as an error) |
+| `userAddress: ""` or `null` | forwarded to the API as-is | falls back to the configured account |
+| Bracket `entryPrice: ""` | `ValueError` from `float("")` | treated as `0` (market entry), like `place_order`'s `price` |
+| Coin names | remapped through the SDK's startup `name_to_coin` (spot aliases resolve; unknown names raise `KeyError`) | forwarded verbatim — identical for perps |
+| Endpoint selection | mainnet/testnet from `HYPERLIQUID_TESTNET` | plus the `HYPERLIQUID_BASE_URL` override |
+| Tool set | 23 tools | 23 + 2 HIP-3 read extensions |
 
 ## HIP-3 builder perp DEXs (extension)
 

@@ -11,11 +11,15 @@ import (
 )
 
 // Vault Management (server.py §5). Both tools post vaultDetails and pass the
-// API response through untouched. vault_performance accepts startTime/endTime
-// for schema parity, but the upstream endpoint takes no time range (the
-// Python implementation passes them positionally into vault_details' user
-// parameter — a latent bug), so Go sends the same request as vault_details
-// and echoes the range only in the summary.
+// API response through untouched. vault_performance accepts
+// startTime/endTime for schema parity, but the upstream endpoint takes no
+// time range, so it sends the same request as vault_details and echoes the
+// range only in the summary.
+//
+// Neither tool has a working reference behavior to match: the Python server
+// calls Info.vault_details, which the Python SDK does not define, so both
+// tools raise AttributeError there before any request is built. See
+// "Divergences from the Python reference" in README.md.
 
 func vaultTools(c *hl.Client) []server.ServerTool {
 	return []server.ServerTool{
@@ -44,9 +48,9 @@ func vaultTools(c *hl.Client) []server.ServerTool {
 	}
 }
 
-// vaultDetailsRaw posts the vault_details query. The Python SDK always
-// includes the "user" key (hyperliquid-python-sdk 0.24.0
-// vault_details(vault_address, user=None)), null for these tools.
+// vaultDetailsRaw posts the vaultDetails query. The "user" key is always
+// present (null for these tools), matching what the API expects for a
+// vault-only lookup.
 func vaultDetailsRaw(ctx context.Context, c *hl.Client, vaultAddress string) (json.RawMessage, error) {
 	return c.RawInfo(ctx, map[string]any{
 		"type":         "vaultDetails",
@@ -80,14 +84,13 @@ func vaultPerformance(ctx context.Context, c *hl.Client, args map[string]any) (m
 	if err != nil {
 		return nil, err
 	}
-	// Same wire call as vault_details: the time
-	// range never reaches the API.
+	// Same wire call as vault_details: the time range never reaches the API.
 	raw, err := vaultDetailsRaw(ctx, c, vaultAddress)
 	if err != nil {
 		return nil, err
 	}
-	// Python `"endTime": end_time or "current"`: absent, null, and 0 all
-	// render as "current".
+	// The summary keeps the intended `end_time or "current"` rendering:
+	// absent, null, and 0 all render as "current".
 	var endTime any = "current"
 	if v, ok := args["endTime"]; ok {
 		if n, isInt := v.(int64); isInt && n != 0 {

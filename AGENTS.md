@@ -19,14 +19,24 @@ MCP server (Hyperliquid perpetuals trading over MCP stdio). **Implemented at par
 
 ## Hard rules
 
-1. **Parity first.** Tool names, JSON schemas, env vars, and response envelopes must match
-   the Python reference (rule 4); the golden schema test is the gate.
+1. **Parity first, on the MCP surface.** Tool names, descriptions, JSON schemas, env
+   vars, and response envelopes must match the Python reference (rule 4); the golden
+   schema test is the gate and it fails, never skips. Behavior parity stops where the
+   reference is broken: seven of its 23 tools raise `AttributeError`/`TypeError`
+   before reaching the API (missing or misnamed SDK methods). Those are implemented
+   for real here — do not "restore parity" by regressing them. Every intentional
+   difference is recorded in README's "Divergences from the Python reference"; add to
+   that table instead of narrating divergences in code comments.
 2. **stdout is sacred.** The MCP protocol runs on stdout. All logs go to stderr,
    always (`log.SetOutput(os.Stderr)` or an stderr slog handler). Never `fmt.Println`.
 3. **No secrets in code, tests, or fixtures.** Integration tests are env-gated.
 4. Reference implementation for behavior questions:
-   `~/workspace/hyperliquid-mcp/src/hyperliquid_mcp/server.py` (read-only; do not modify
-   that repo from here).
+   `~/workspace/hyperliquid-mcp/src/hyperliquid_mcp/server.py` when checked out
+   locally (read-only; do not modify that repo from here), otherwise
+   `edkdev/hyperliquid-mcp` @ `7f39651` — the commit the golden fixture was extracted
+   from. Claims about the Python SDK must be checked against
+   `hyperliquid-dex/hyperliquid-python-sdk` (verified at tag `0.24.0`; the reference
+   pins only `>=0.6.0`).
 
 ## Environment
 
@@ -48,8 +58,11 @@ go test -tags=integration ./...   # testnet smoke test (needs env secrets; manua
 
 ## Definition of done for the parity release
 
-- [ ] All 23 tools implemented at schema parity (golden test green)
-- [ ] Golden schema test passes (fixture `internal/tools/testdata/tools.python.json`
-  is local-only/gitignored, regenerable from the Python reference; tests skip without it)
+- [x] All 23 tools implemented at schema parity (golden test green)
+- [x] Golden schema test passes — fixture `internal/tools/testdata/tools.python.json`
+  is **tracked** (static literals from the reference, no secrets) and enforced by CI;
+  regenerate by AST-extracting `list_tools()`'s `Tool(...)` literals from the Python
+  reference into `[{name, description, inputSchema}]`. Keep `.gitignore` patterns for
+  local-only dirs root-anchored so nested `testdata/` stays tracked.
 - [ ] Manual testnet smoke test: place + cancel an order
 - [ ] `go build` produces a static binary that runs an MCP session over stdio

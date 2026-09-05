@@ -63,8 +63,8 @@ func queryTools(c *hl.Client) []server.ServerTool {
 	}
 }
 
-// getOpenOrders posts the open_orders query. The Python SDK always includes
-// the "dex" key, even when empty (hyperliquid-python-sdk 0.24.0).
+// getOpenOrders posts the openOrders query. Info.open_orders always includes
+// the "dex" key, even when empty.
 func getOpenOrders(ctx context.Context, c *hl.Client, args map[string]any) (map[string]any, error) {
 	raw, err := c.RawInfo(ctx, map[string]any{
 		"type": "openOrders",
@@ -115,7 +115,9 @@ func getUserFills(ctx context.Context, c *hl.Client, args map[string]any) (map[s
 		return nil, err
 	}
 	endTime, hasEndTime := queryEndTimeParam(args)
-	// The Python SDK always sends "endTime", null when omitted.
+	// Info.user_fills_by_time's body always carries "endTime", null when
+	// omitted (the reference server never reaches it — it calls that method
+	// with a "user=" keyword it does not accept; see README divergences).
 	var endWire any
 	if hasEndTime {
 		endWire = endTime
@@ -150,7 +152,9 @@ func getUserFunding(ctx context.Context, c *hl.Client, args map[string]any) (map
 		return nil, err
 	}
 	endTime, hasEndTime := queryEndTimeParam(args)
-	// The Python SDK sends "endTime" only when provided — never a null key.
+	// Info.user_funding_history's body carries "endTime" only when provided,
+	// never a null key (the reference server calls a nonexistent
+	// Info.user_funding; see README divergences).
 	body := map[string]any{
 		"type":      "userFunding",
 		"user":      UserAddress(args, c),

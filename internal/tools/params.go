@@ -137,7 +137,9 @@ func FloatParam(args map[string]any, name string) (float64, error) {
 }
 
 // FloatParamDefault reads an optional float parameter. Absent, null, or empty
-// string yield the default (mirrors Python `float(s) if s else default`).
+// string yield the default, mirroring place_order's price handling
+// (`float(price_str) if price_str else 0.0`). The reference's bracket
+// entryPrice has no such guard and raises on ""; see README divergences.
 func FloatParamDefault(args map[string]any, name string, def float64) (float64, error) {
 	v, ok := args[name]
 	if !ok || v == nil {

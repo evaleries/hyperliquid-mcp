@@ -53,8 +53,8 @@ func accountTools(c *hl.Client) []server.ServerTool {
 	}
 }
 
-// userStateRaw posts the user_state query. The Python SDK always includes the
-// "dex" key, even when empty (hyperliquid-python-sdk 0.24.0).
+// userStateRaw posts the clearinghouseState query. Info.user_state always
+// includes the "dex" key, even when empty.
 func userStateRaw(ctx context.Context, c *hl.Client, args map[string]any) (json.RawMessage, error) {
 	return c.RawInfo(ctx, map[string]any{
 		"type": "clearinghouseState",

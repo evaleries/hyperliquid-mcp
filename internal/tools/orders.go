@@ -526,8 +526,8 @@ func modifyOrder(ctx context.Context, c *hl.Client, args map[string]any) (map[st
 		return nil, err
 	}
 
-	// The Python SDK's modify_order delegates to bulk_modify_orders, so the
-	// wire action is "batchModify"; BulkModifyOrders reproduces it.
+	// The Python SDK's modify_order delegates to bulk_modify_orders_new, so
+	// the wire action is "batchModify"; BulkModifyOrders reproduces it.
 	statuses, err := c.Exchange.BulkModifyOrders(ctx, []hyperliquid.ModifyOrderRequest{{
 		Oid: &oid,
 		Order: hyperliquid.CreateOrderRequest{

@@ -83,8 +83,7 @@ func marketTools(c *hl.Client) []server.ServerTool {
 	}
 }
 
-// The Python SDK sends "dex" (empty for the main perp dex) on meta and
-// all_mids (hyperliquid-python-sdk 0.24.0).
+// Info.meta and Info.all_mids both send "dex" (empty for the main perp dex).
 
 func getMeta(ctx context.Context, c *hl.Client, _ map[string]any) (map[string]any, error) {
 	raw, err := c.RawInfo(ctx, map[string]any{
@@ -203,6 +202,10 @@ func lenOf(v any) int {
 	return 0
 }
 
+// getRecentTrades has no working reference behavior to match: the Python
+// server calls Info.recent_trades, which the Python SDK does not define, so
+// the tool raises AttributeError there. The wire body is the API's own
+// recentTrades query. See README divergences.
 func getRecentTrades(ctx context.Context, c *hl.Client, args map[string]any) (map[string]any, error) {
 	coin, err := RequireString(args, "coin")
 	if err != nil {
@@ -259,10 +262,10 @@ func getHistoricalFunding(ctx context.Context, c *hl.Client, args map[string]any
 		"coin":      coin,
 		"startTime": startTime,
 	}
-	// The Python SDK includes endTime only when provided. Python also maps
-	// a falsy endTime (0) to None first
-	// (server.py: `... if arguments.get("endTime") else None`), so 0 omits the
-	// key exactly like an absent value.
+	// fundingHistory carries endTime only when provided, and a falsy endTime
+	// (0) is treated as absent — the reference server's
+	// `int(arguments["endTime"]) if arguments.get("endTime") else None`
+	// intent, kept because the schema documents endTime as optional.
 	if endTime, ok := marketEndTime(args); ok {
 		body["endTime"] = endTime
 	}
