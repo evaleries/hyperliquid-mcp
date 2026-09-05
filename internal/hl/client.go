@@ -40,7 +40,9 @@ type Client struct {
 // maxInfoResponseBytes caps RawInfo response bodies (security review
 // SEC-DOS-002): a malfunctioning endpoint must not exhaust the process or
 // flood the MCP client's context. 64 MiB is far above any real /info body.
-const maxInfoResponseBytes = 64 << 20
+// A var, not a const, so the boundary is testable without moving 64 MiB
+// through a test server; nothing outside tests reassigns it.
+var maxInfoResponseBytes int64 = 64 << 20
 
 // hardenedHTTPClient is shared by RawInfo and the SDK (injected via options):
 // redirects are refused (SEC-REDIRECT-001 — a cross-host 307/308 would
@@ -126,7 +128,7 @@ func (c *Client) RawInfo(ctx context.Context, payload map[string]any) (json.RawM
 	if err != nil {
 		return nil, fmt.Errorf("failed to read info response: %w", err)
 	}
-	if len(respBody) > maxInfoResponseBytes {
+	if int64(len(respBody)) > maxInfoResponseBytes {
 		return nil, fmt.Errorf("info response exceeds %d bytes", maxInfoResponseBytes)
 	}
 	if resp.StatusCode != http.StatusOK {
