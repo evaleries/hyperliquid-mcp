@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/edkdev/hyperliquid-mcp-go/internal/hl"
+	"github.com/evaleries/hyperliquid-mcp/internal/hl"
 )
 
 // intParams are normalized to integers before dispatch, mirroring the Python

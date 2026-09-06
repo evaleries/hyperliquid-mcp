@@ -1,4 +1,4 @@
-module github.com/edkdev/hyperliquid-mcp-go
+module github.com/evaleries/hyperliquid-mcp
 
 go 1.27.1
 

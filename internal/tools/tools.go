@@ -7,7 +7,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
-	"github.com/edkdev/hyperliquid-mcp-go/internal/hl"
+	"github.com/evaleries/hyperliquid-mcp/internal/hl"
 )
 
 // ServerName and ServerVersion match the Python reference (server.py:

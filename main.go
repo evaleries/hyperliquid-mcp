@@ -10,9 +10,9 @@ import (
 
 	"github.com/mark3labs/mcp-go/server"
 
-	"github.com/edkdev/hyperliquid-mcp-go/internal/config"
-	"github.com/edkdev/hyperliquid-mcp-go/internal/hl"
-	"github.com/edkdev/hyperliquid-mcp-go/internal/tools"
+	"github.com/evaleries/hyperliquid-mcp/internal/config"
+	"github.com/evaleries/hyperliquid-mcp/internal/hl"
+	"github.com/evaleries/hyperliquid-mcp/internal/tools"
 )
 
 func main() {

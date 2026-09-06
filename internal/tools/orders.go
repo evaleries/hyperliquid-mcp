@@ -10,7 +10,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/sonirico/go-hyperliquid"
 
-	"github.com/edkdev/hyperliquid-mcp-go/internal/hl"
+	"github.com/evaleries/hyperliquid-mcp/internal/hl"
 )
 
 // Order Management (server.py §2). All signing paths go through the SDK;

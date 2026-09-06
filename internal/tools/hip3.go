@@ -13,7 +13,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/server"
 
-	"github.com/edkdev/hyperliquid-mcp-go/internal/hl"
+	"github.com/evaleries/hyperliquid-mcp/internal/hl"
 )
 
 // defaultPerpDex is the initiative-locked default for HIP-3 tools.

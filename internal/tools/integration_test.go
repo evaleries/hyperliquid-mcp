@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edkdev/hyperliquid-mcp-go/internal/config"
-	"github.com/edkdev/hyperliquid-mcp-go/internal/hl"
+	"github.com/evaleries/hyperliquid-mcp/internal/config"
+	"github.com/evaleries/hyperliquid-mcp/internal/hl"
 )
 
 // TestIntegrationPlaceAndCancelOrder is the manual testnet smoke test:

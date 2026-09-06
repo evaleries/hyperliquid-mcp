@@ -7,7 +7,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/server"
 
-	"github.com/edkdev/hyperliquid-mcp-go/internal/hl"
+	"github.com/evaleries/hyperliquid-mcp/internal/hl"
 )
 
 // Vault Management (server.py §5). Both tools post vaultDetails and pass the

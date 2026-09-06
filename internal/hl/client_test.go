@@ -13,7 +13,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/edkdev/hyperliquid-mcp-go/internal/config"
+	"github.com/evaleries/hyperliquid-mcp/internal/config"
 )
 
 const (

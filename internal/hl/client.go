@@ -15,7 +15,7 @@ import (
 
 	"github.com/sonirico/go-hyperliquid"
 
-	"github.com/edkdev/hyperliquid-mcp-go/internal/config"
+	"github.com/evaleries/hyperliquid-mcp/internal/config"
 )
 
 // Client bundles the SDK handles and the resolved account context that tool

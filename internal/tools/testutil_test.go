@@ -14,8 +14,8 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
-	"github.com/edkdev/hyperliquid-mcp-go/internal/config"
-	"github.com/edkdev/hyperliquid-mcp-go/internal/hl"
+	"github.com/evaleries/hyperliquid-mcp/internal/config"
+	"github.com/evaleries/hyperliquid-mcp/internal/hl"
 )
 
 // testPrivateKey is Hardhat/Anvil well-known account #0. It is a public test

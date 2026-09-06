@@ -7,7 +7,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/server"
 
-	"github.com/edkdev/hyperliquid-mcp-go/internal/hl"
+	"github.com/evaleries/hyperliquid-mcp/internal/hl"
 )
 
 // Market Data (server.py §4). All six tools are raw /info reads: the API

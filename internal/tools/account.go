@@ -8,7 +8,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/server"
 
-	"github.com/edkdev/hyperliquid-mcp-go/internal/hl"
+	"github.com/evaleries/hyperliquid-mcp/internal/hl"
 )
 
 // Account & Position Management (server.py §1). All three tools are backed by

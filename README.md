@@ -11,10 +11,15 @@ All order signing is delegated to the community SDK, [sonirico/go-hyperliquid](h
 Requires Go 1.27+.
 
 ```bash
+go install github.com/evaleries/hyperliquid-mcp@latest
+```
+
+This puts a `hyperliquid-mcp` binary in your Go bin directory (`~/go/bin` by default). To hack on the source instead:
+
+```bash
 git clone https://github.com/evaleries/hyperliquid-mcp.git
 cd hyperliquid-mcp
-go install .        # installs hyperliquid-mcp-go into ~/go/bin
-go test ./...       # optional: unit + mock-API tests, no network
+go test ./...       # unit + mock-API tests, no network
 ```
 
 The binary speaks MCP on stdio and logs to stderr.
@@ -37,7 +42,7 @@ Example MCP client config:
 {
   "mcpServers": {
     "hyperliquid": {
-      "command": "hyperliquid-mcp-go",
+      "command": "hyperliquid-mcp",
       "args": [],
       "env": {
         "HYPERLIQUID_PRIVATE_KEY": "0x1234567890abcdef...",
@@ -50,7 +55,7 @@ Example MCP client config:
 
 ## Available tools
 
-The same 23 tools as the Python server, plus 2 HIP-3 additions — 25 total.
+The same 23 tools as the Python server, plus 2 HIP-3 additions.
 
 **Account**
 
