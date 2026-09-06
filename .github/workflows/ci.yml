@@ -25,10 +25,6 @@ jobs:
       - name: Vet
         run: go vet ./...
 
-      # The golden schema fixture (internal/tools/testdata/tools.python.json)
-      # is tracked, so the parity gate runs here — it fails, never skips, when
-      # a tool name, description, input schema, or list order drifts from the
-      # Python reference.
       - name: Test
         run: go test -race ./...
 

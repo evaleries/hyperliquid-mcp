@@ -26,8 +26,6 @@ go.work.sum
 .vscode/
 *.swp
 
-# Local-only design docs and task plans. Root-anchored on purpose: an
-# unanchored pattern also swallows nested fixture directories such as
-# internal/tools/testdata (the golden schema fixture is tracked).
+# Local-only design docs and task plans (root-anchored).
 /docs/
 /tasks/

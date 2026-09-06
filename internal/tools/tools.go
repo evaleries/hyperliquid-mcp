@@ -62,8 +62,7 @@ type schemaSpec struct {
 }
 
 // schema builds a tool input schema from explicit JSON-schema property maps.
-// Property maps are written to match the Python server's schemas
-// (verified by the golden test against testdata/tools.python.json).
+// Property maps are written to match the Python server's schemas.
 func schema(props map[string]any, required ...string) json.RawMessage {
 	if props == nil {
 		props = map[string]any{}

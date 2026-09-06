@@ -4,7 +4,7 @@
 
 Go rewrite of the Python [`mcp-hyperliquid`](https://github.com/edkdev/hyperliquid-mcp)
 MCP server (Hyperliquid perpetuals trading over MCP stdio). **Implemented at parity**
-(2026-09-03): all 23 tools, golden schema test green, stdio smoke-tested against mainnet.
+(2026-09-03): all 23 tools, schema parity verified, stdio smoke-tested against mainnet.
 
 ## Locked decisions
 
@@ -20,13 +20,13 @@ MCP server (Hyperliquid perpetuals trading over MCP stdio). **Implemented at par
 ## Hard rules
 
 1. **Parity first, on the MCP surface.** Tool names, descriptions, JSON schemas, env
-   vars, and response envelopes must match the Python reference (rule 4); the golden
-   schema test is the gate and it fails, never skips. Behavior parity stops where the
-   reference is broken: seven of its 23 tools raise `AttributeError`/`TypeError`
-   before reaching the API (missing or misnamed SDK methods). Those are implemented
-    for real here — do not "restore parity" by regressing them. Every intentional
-    difference is recorded in `docs/DECISIONS.md` (local-only); add a D-entry there
-    instead of narrating divergences in code comments or the public README.
+   vars, and response envelopes must match the Python reference (rule 4). Behavior
+   parity stops where the reference is broken: seven of its 23 tools raise
+   `AttributeError`/`TypeError` before reaching the API (missing or misnamed SDK
+   methods). Those are implemented for real here — do not "restore parity" by
+   regressing them. Every intentional difference is recorded in `docs/DECISIONS.md`
+   (local-only); add a D-entry there instead of narrating divergences in code
+   comments or the public README.
 2. **stdout is sacred.** The MCP protocol runs on stdout. All logs go to stderr,
    always (`log.SetOutput(os.Stderr)` or an stderr slog handler). Never `fmt.Println`.
 3. **No secrets in code, tests, or fixtures.** Integration tests are env-gated.
@@ -60,11 +60,9 @@ go test -tags=integration ./...   # testnet smoke test (needs env secrets; manua
 
 ## Definition of done for the parity release
 
-- [x] All 23 tools implemented at schema parity (golden test green)
-- [x] Golden schema test passes — fixture `internal/tools/testdata/tools.python.json`
-  is **tracked** (static literals from the reference, no secrets) and enforced by CI;
-  regenerate by AST-extracting `list_tools()`'s `Tool(...)` literals from the Python
-  reference into `[{name, description, inputSchema}]`. Keep `.gitignore` patterns for
-  local-only dirs root-anchored so nested `testdata/` stays tracked.
+- [x] All 23 tools implemented at schema parity with the Python reference (verified
+  against a golden fixture; the fixture and its gate were removed 2026-09-06 — the
+  parity surface is frozen at v0.1.0 and the registry in `internal/tools/` is the
+  single source of truth)
 - [ ] Manual testnet smoke test: place + cancel an order
 - [ ] `go build` produces a static binary that runs an MCP session over stdio
