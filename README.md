@@ -2,71 +2,34 @@
 
 A [Model Context Protocol](https://modelcontextprotocol.io/) server for [Hyperliquid](https://hyperliquid.xyz/) perpetual trading, written in Go.
 
-This is a Go rewrite of the Python [`mcp-hyperliquid`](https://github.com/edkdev/hyperliquid-mcp) server. It gives AI assistants (Claude Desktop, Kiro, and other MCP clients) secure access to Hyperliquid's trading API over stdio.
+It is a drop-in replacement for the Python [`mcp-hyperliquid`](https://github.com/edkdev/hyperliquid-mcp) server: the same 23 tools and the same configuration, shipped as a single static binary — no Python runtime, no `uvx`/`pip`, fast cold start. An MCP client configured for the Python server switches over by changing only the `command` path. On top of that, it reads and trades HIP-3 builder perp DEXs (xyz, flx, vntl, …).
 
-> **Status:** Parity release implemented — all 23 tools from the Python
-> reference are shipped; their names, descriptions, and input schemas are
-> checked against its `list_tools()` output by a tracked golden fixture
-> (`TestGoldenSchemaParity`, run in CI) — **plus HIP-3 extensions**:
-> builder perp DEX discovery and dex-qualified meta
-> (`hyperliquid_get_perp_dexs`, `hyperliquid_get_dex_meta`). Behavior
-> differences are listed under
-> [Divergences from the Python reference](#divergences-from-the-python-reference).
-> Remaining before tagging: manual testnet smoke test
-> (`go test -tags=integration ./...` with a funded testnet key).
+All order signing is delegated to the community SDK, [sonirico/go-hyperliquid](https://github.com/sonirico/go-hyperliquid). What remains here is MCP wiring and API calls — small enough to read end to end before you hand it a private key.
 
-## Build & run
+## Install
 
 Requires Go 1.27+.
 
 ```bash
-go build -o hyperliquid-mcp-go .   # produces the server binary
-go install .                       # or install to ~/go/bin for PATH-wide use
-go test ./...                      # unit + httptest layers (no network)
-go test ./... -bench . -run '^$'   # perf guards (startup, JSON pipeline, pooling)
-go vet ./...                       # lint baseline
-# manual, needs a funded testnet key in HYPERLIQUID_PRIVATE_KEY:
-go test -tags=integration ./internal/tools/ -run Integration -v
+git clone https://github.com/evaleries/hyperliquid-mcp.git
+cd hyperliquid-mcp
+go install .        # installs hyperliquid-mcp-go into ~/go/bin
+go test ./...       # optional: unit + mock-API tests, no network
 ```
 
-The binary speaks MCP on stdio; logs go to stderr. Configure your MCP client
-with the environment variables below (same as the Python version).
-
-## Why Go
-
-The Python original requires a Python 3.10+ runtime and `uvx`/`pip` to run. The Go rewrite ships as:
-
-- **A single static binary** — no runtime, no dependency resolution at startup, fast cold start
-- **Cross-compiled releases** — one binary per OS/arch, trivially installable
-- **The same MCP contract** — identical tool names, schemas, and configuration, so existing MCP client configs keep working with a one-line change (the command path)
-
-## Goals
-
-1. **Feature parity with `mcp-hyperliquid` v0.1.0** — all 23 tools, same names, same input schemas, same environment variables, same response shapes.
-2. **Drop-in replacement** — an MCP client configured for the Python server can switch to the Go binary by changing only `command`/`args`.
-3. **Thin, auditable core** — all signing and wire-format concerns delegated to the community SDK; this repo contains only MCP wiring and Hyperliquid API calls.
-
-## Technology choices (decided)
-
-| Concern | Choice | Version |
-| --- | --- | --- |
-| MCP framework | [`github.com/mark3labs/mcp-go`](https://pkg.go.dev/github.com/mark3labs/mcp-go) | v1.x |
-| Hyperliquid SDK | [`github.com/sonirico/go-hyperliquid`](https://pkg.go.dev/github.com/sonirico/go-hyperliquid) | v0.44+ |
-| JSON engine | [`bytedance/sonic`](https://github.com/bytedance/sonic) for envelopes, stdlib for streaming decode | v1.x |
-| Transport | stdio (same as Python) | — |
-| Distribution | `go install` + prebuilt binaries (goreleaser, later) | — |
+The binary speaks MCP on stdio and logs to stderr.
 
 ## Configuration
 
-Environment variables (the first four match the Python version; `HYPERLIQUID_BASE_URL` is a Go-only extension):
+Same environment variables as the Python version, plus one optional override:
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `HYPERLIQUID_PRIVATE_KEY` | ✅ | Private key of the signing wallet |
-| `HYPERLIQUID_ACCOUNT_ADDRESS` | ➖ | Agent/API-wallet mode: trading account address (defaults to key-derived address) |
-| `HYPERLIQUID_TESTNET` | ➖ | `"true"` for testnet, anything else/unset = mainnet |
+| `HYPERLIQUID_ACCOUNT_ADDRESS` | ➖ | Agent/API-wallet mode: trading account address (defaults to the key-derived address) |
+| `HYPERLIQUID_TESTNET` | ➖ | `"true"` for testnet; anything else or unset means mainnet |
 | `HYPERLIQUID_VAULT_ADDRESS` | ➖ | Trade from a vault |
-| `HYPERLIQUID_BASE_URL` | ➖ | Custom API endpoint (e.g. `https://your-proxy.example.com` or `http://localhost:8080` for a mock); overrides the mainnet/testnet default implied by `HYPERLIQUID_TESTNET` |
+| `HYPERLIQUID_BASE_URL` | ➖ | Custom API endpoint (a proxy or a local mock); overrides the network default |
 
 Example MCP client config:
 
@@ -87,7 +50,7 @@ Example MCP client config:
 
 ## Available tools
 
-All 23 tools of the Python server (same names, input schemas, and response shapes), plus 2 HIP-3 read extensions — 25 total.
+The same 23 tools as the Python server, plus 2 HIP-3 additions — 25 total.
 
 **Account**
 
@@ -97,12 +60,12 @@ All 23 tools of the Python server (same names, input schemas, and response shape
 
 **Orders**
 
-- `hyperliquid_place_order` — place a single order (minimum value $10; use asset index from `get_meta`)
-- `hyperliquid_place_bracket_order` — entry + take-profit + stop-loss in one atomic batch (TP/SL auto reduce-only triggers)
-- `hyperliquid_cancel_order` — cancel a specific order by coin name and order ID (`oid`)
+- `hyperliquid_place_order` — place a single order (minimum value $10; use the asset index from `get_meta`)
+- `hyperliquid_place_bracket_order` — entry + take-profit + stop-loss in one atomic batch
+- `hyperliquid_cancel_order` — cancel an order by coin name and order ID (`oid`)
 - `hyperliquid_cancel_all_orders` — cancel all open orders for the user
 - `hyperliquid_modify_order` — modify an existing order
-- `hyperliquid_place_twap_order`, `hyperliquid_cancel_twap_order` — listed for parity; both are stubs that always fail, same as the Python reference
+- `hyperliquid_place_twap_order`, `hyperliquid_cancel_twap_order` — stubs that always fail, as in the Python version
 
 **Order queries**
 
@@ -113,7 +76,7 @@ All 23 tools of the Python server (same names, input schemas, and response shape
 
 **Market data**
 
-- `hyperliquid_get_meta` — exchange metadata: asset indices, names, max leverage (maps coin names to asset indices)
+- `hyperliquid_get_meta` — exchange metadata: asset indices, names, max leverage
 - `hyperliquid_get_all_mids` — current mid prices for all assets
 - `hyperliquid_get_order_book` — L2 order book (market depth) for an asset
 - `hyperliquid_get_recent_trades` — recent trades for an asset
@@ -129,77 +92,16 @@ All 23 tools of the Python server (same names, input schemas, and response shape
 
 - `hyperliquid_get_server_time` — estimated server time
 
-**HIP-3 extensions** (beyond parity — details below)
+**HIP-3**
 
-- `hyperliquid_get_perp_dexs` — list builder-deployed perp DEXs with their `perpDexIndex`
-- `hyperliquid_get_dex_meta` — a builder DEX's asset universe (`dex` defaults to `xyz`)
+- `hyperliquid_get_perp_dexs` — list builder-deployed perp DEXs
+- `hyperliquid_get_dex_meta` — a builder DEX's asset universe (`dex` defaults to `xyz`; empty string selects the main DEX)
 
-## Divergences from the Python reference
+## Trading on HIP-3 builder DEXs
 
-Parity is enforced on the MCP surface — tool names, descriptions, and input
-schemas are compared against the reference's `list_tools()` output by
-`TestGoldenSchemaParity` (fixture:
-`internal/tools/testdata/tools.python.json`, extracted from
-[`edkdev/hyperliquid-mcp`](https://github.com/edkdev/hyperliquid-mcp) @
-`7f39651`). Behavior diverges where the reference is broken or where an
-extension was added. Verified against `hyperliquid-python-sdk` 0.24.0; note
-the reference pins only `hyperliquid-python-sdk>=0.6.0`, so its own behavior
-is not version-stable.
+Builder DEXs use their own asset IDs: `assetIdBase` + universe index, both reported by `hyperliquid_get_dex_meta`. For xyz (`assetIdBase` 110000), the asset at universe index 11 has ID `110011`.
 
-**Tools that always raise in the reference** (implemented for real here):
-
-| Tool | Reference outcome | This server |
-| --- | --- | --- |
-| `get_recent_trades` | `AttributeError` — `Info.recent_trades` does not exist | posts `recentTrades` |
-| `get_user_fills` | `TypeError` — `user_fills_by_time(address=…)` is called as `user=` | posts `userFillsByTime` |
-| `get_user_funding` | `AttributeError` — the SDK method is `user_funding_history`, not `user_funding` | posts `userFunding` |
-| `get_historical_funding` | `TypeError` — `funding_history(name, startTime, endTime)` is called with `coin=`/`start_time=`/`end_time=` | posts `fundingHistory` |
-| `get_candles` | `TypeError` — `candles_snapshot(name, interval, startTime, endTime)` is called with snake_case keywords | posts `candleSnapshot` |
-| `vault_details` | `AttributeError` — `Info.vault_details` does not exist | posts `vaultDetails` |
-| `vault_performance` | `AttributeError` — same missing method | posts `vaultDetails`; the endpoint takes no time range, so it is echoed in `summary` only |
-
-The two TWAP tools are listed and always fail in both implementations
-(`NotImplementedError` there, the same messages here).
-
-**Deliberate behavior differences:**
-
-| Area | Reference | This server |
-| --- | --- | --- |
-| Error results | error JSON as plain text content | same JSON, plus MCP `isError: true` |
-| `modify_order` on an API-level rejection | success envelope carrying `{"status":"err","response":<reason>}` | error envelope (the Go SDK surfaces a non-ok body as an error) |
-| `userAddress: ""` or `null` | forwarded to the API as-is | falls back to the configured account |
-| Bracket `entryPrice: ""` | `ValueError` from `float("")` | treated as `0` (market entry), like `place_order`'s `price` |
-| Coin names | remapped through the SDK's startup `name_to_coin` (spot aliases resolve; unknown names raise `KeyError`) | forwarded verbatim — identical for perps |
-| Endpoint selection | mainnet/testnet from `HYPERLIQUID_TESTNET` | plus the `HYPERLIQUID_BASE_URL` override |
-| Tool set | 23 tools | 23 + 2 HIP-3 read extensions |
-| HIP-3 builder-DEX orders | rejected (asset IDs ≥ 110000 fail main-meta validation; `xyz:CL`-style coins unresolvable) | supported through the parity order tools via dex-scoped SDK exchanges (see below) |
-
-## HIP-3 builder perp DEXs (extension)
-
-Beyond parity: access to Hyperliquid's
-[HIP-3](https://hyperliquid.gitbook.io/hyperliquid-docs/hyperliquid-improvement-proposals-hips/hip-3-builder-deployed-perpetuals)
-builder-deployed perp DEXs:
-
-- `hyperliquid_get_perp_dexs` — list builder DEXs (xyz, flx, vntl, …) with their `perpDexIndex`
-- `hyperliquid_get_dex_meta` — a DEX's asset universe; `dex` defaults to `xyz`, empty string = main DEX
-
-Example: *"What can I trade on the xyz DEX?"* → the model calls
-`hyperliquid_get_dex_meta` and gets the universe plus `assetIdBase`
-(`100000 + perpDexIndex × 10000`) for constructing builder asset IDs.
-
-Trading on builder DEXs (hip3-trade) works through the parity order tools:
-`place_order`/`place_bracket_order` accept builder asset IDs (≥ 110000,
-validated against the target DEX's meta instead of the main one), and
-`cancel_order`/`modify_order` route dex-prefixed coin names (e.g. `xyz:CL`)
-to that DEX — as does `cancel_all_orders` with its `dex` param. All builder
-actions are still signed by the go-hyperliquid SDK, via a dex-scoped
-`Exchange` built from that DEX's freshly fetched meta.
-
-HIP-4 outcome-market reads are a planned module.
-
-## Documentation
-
-- [AGENTS.md](AGENTS.md) — working agreements for coding agents in this repo
+Pass that ID to `hyperliquid_place_order` or `hyperliquid_place_bracket_order` and the order lands on the builder DEX. Cancel and modify take the dex-prefixed coin name shown in your open orders (e.g. `xyz:CL`); `hyperliquid_cancel_all_orders` accepts a `dex` parameter.
 
 ## License
 

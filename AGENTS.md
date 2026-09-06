@@ -24,9 +24,9 @@ MCP server (Hyperliquid perpetuals trading over MCP stdio). **Implemented at par
    schema test is the gate and it fails, never skips. Behavior parity stops where the
    reference is broken: seven of its 23 tools raise `AttributeError`/`TypeError`
    before reaching the API (missing or misnamed SDK methods). Those are implemented
-   for real here — do not "restore parity" by regressing them. Every intentional
-   difference is recorded in README's "Divergences from the Python reference"; add to
-   that table instead of narrating divergences in code comments.
+    for real here — do not "restore parity" by regressing them. Every intentional
+    difference is recorded in `docs/DECISIONS.md` (local-only); add a D-entry there
+    instead of narrating divergences in code comments or the public README.
 2. **stdout is sacred.** The MCP protocol runs on stdout. All logs go to stderr,
    always (`log.SetOutput(os.Stderr)` or an stderr slog handler). Never `fmt.Println`.
 3. **No secrets in code, tests, or fixtures.** Integration tests are env-gated.
@@ -43,7 +43,9 @@ MCP server (Hyperliquid perpetuals trading over MCP stdio). **Implemented at par
 - Go 1.27.1 is installed at `/usr/local/go` (added 2026-09-03); use
   `export PATH=$PATH:/usr/local/go/bin`.
 - Repo lives at `~/workspace/hyperliquid-mcp-go`; canonical remote
-  `https://github.com/evaleries/hyperliquid-mcp` (private).
+  `https://github.com/evaleries/hyperliquid-mcp` (public — keep README.md and other
+  tracked files free of internal bookkeeping: parity tables, test names, initiative
+  jargon; those live in the local-only `docs/`).
 - Git identity in this repo is `evaleries` (repo-local config) — do not change it;
   force-pushing rewritten history to `main` is accepted practice here (owner's call).
 
