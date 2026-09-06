@@ -5,10 +5,12 @@ package hl
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/sonirico/go-hyperliquid"
@@ -33,6 +35,15 @@ type Client struct {
 	VaultAddress string
 	// WalletAddress is the signing (API wallet) address.
 	WalletAddress string
+
+	// key and clientOpt reproduce the SDK construction context for the
+	// lazily built builder-dex exchanges (builder.go).
+	key       *ecdsa.PrivateKey
+	clientOpt hyperliquid.ClientOpt
+	// lastNonce seeds the nonce counters of per-call builder exchanges so
+	// nonces stay strictly increasing across instances (the API rejects
+	// reused nonces).
+	lastNonce atomic.Int64
 
 	http *http.Client
 }
@@ -98,6 +109,8 @@ func New(ctx context.Context, cfg config.Config) (client *Client, err error) {
 		AccountAddress: cfg.AccountAddress,
 		VaultAddress:   cfg.VaultAddress,
 		WalletAddress:  cfg.WalletAddress,
+		key:            cfg.PrivateKey,
+		clientOpt:      clientOpt,
 		http:           httpClient,
 	}, nil
 }
@@ -148,8 +161,9 @@ func (c *Client) VerifyWallet(ctx context.Context) (string, error) {
 	return state.MarginSummary.AccountValue, nil
 }
 
-// CoinForAsset maps an asset index to a coin name via a fresh meta fetch
-// (parity baseline: Python calls info.meta() per order).
+// CoinForAsset maps a main-DEX asset index to a coin name via a fresh meta
+// fetch (parity baseline: Python calls info.meta() per order). HIP-3 builder
+// asset IDs (>= 100000) are rejected here; ResolveAsset handles them.
 func (c *Client) CoinForAsset(ctx context.Context, asset int64) (string, error) {
 	meta, err := c.Info.Meta(ctx)
 	if err != nil {

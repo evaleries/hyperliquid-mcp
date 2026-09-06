@@ -225,7 +225,7 @@ func placeOrder(ctx context.Context, c *hl.Client, args map[string]any) (map[str
 	if cloid != "" {
 		cloidPtr = &cloid
 	}
-	coin, err := c.CoinForAsset(ctx, asset)
+	coin, exchange, err := c.ResolveAsset(ctx, asset)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +234,7 @@ func placeOrder(ctx context.Context, c *hl.Client, args map[string]any) (map[str
 		return nil, err
 	}
 
-	resp, err := c.Exchange.BulkOrders(ctx, []hyperliquid.CreateOrderRequest{{
+	resp, err := exchange.BulkOrders(ctx, []hyperliquid.CreateOrderRequest{{
 		Coin:          coin,
 		IsBuy:         isBuy,
 		Price:         price,
@@ -292,7 +292,7 @@ func placeBracketOrder(ctx context.Context, c *hl.Client, args map[string]any) (
 		return nil, err
 	}
 	reduceOnly := OptBool(args, "reduceOnly", false)
-	coin, err := c.CoinForAsset(ctx, asset)
+	coin, exchange, err := c.ResolveAsset(ctx, asset)
 	if err != nil {
 		return nil, err
 	}
@@ -312,7 +312,7 @@ func placeBracketOrder(ctx context.Context, c *hl.Client, args map[string]any) (
 		entryOrderType: entryOrderType,
 	})
 
-	resp, err := c.Exchange.BulkOrders(ctx, orders, nil)
+	resp, err := exchange.BulkOrders(ctx, orders, nil)
 	if resp == nil {
 		return nil, exchangeErr(err)
 	}
@@ -400,8 +400,14 @@ func cancelOrder(ctx context.Context, c *hl.Client, args map[string]any) (map[st
 	if err != nil {
 		return nil, err
 	}
+	// HIP-3 builder coins are dex-prefixed ("xyz:CL") and resolve only
+	// against that dex's meta.
+	exchange, err := c.ExchangeForCoin(ctx, coin)
+	if err != nil {
+		return nil, err
+	}
 
-	resp, err := c.Exchange.Cancel(ctx, coin, oid)
+	resp, err := exchange.Cancel(ctx, coin, oid)
 	if resp == nil {
 		return nil, exchangeErr(err)
 	}
@@ -427,10 +433,11 @@ func cancelOrder(ctx context.Context, c *hl.Client, args map[string]any) (map[st
 }
 
 func cancelAllOrders(ctx context.Context, c *hl.Client, args map[string]any) (map[string]any, error) {
+	dex := Dex(args)
 	raw, err := c.RawInfo(ctx, map[string]any{
 		"type": "openOrders",
 		"user": UserAddress(args, c),
-		"dex":  Dex(args),
+		"dex":  dex,
 	})
 	if err != nil {
 		return nil, err
@@ -478,7 +485,14 @@ func cancelAllOrders(ctx context.Context, c *hl.Client, args map[string]any) (ma
 		reqs = append(reqs, hyperliquid.CancelOrderRequest{Coin: coin, OrderID: oid})
 	}
 
-	resp, err := c.Exchange.BulkCancel(ctx, reqs)
+	// A builder-dex cancel-all (dex param set) needs that dex's exchange so
+	// the SDK resolves the dex-prefixed coin names to builder asset IDs.
+	exchange, err := c.ExchangeForDex(ctx, dex)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := exchange.BulkCancel(ctx, reqs)
 	if resp == nil {
 		return nil, exchangeErr(err)
 	}
@@ -525,10 +539,15 @@ func modifyOrder(ctx context.Context, c *hl.Client, args map[string]any) (map[st
 	if err != nil {
 		return nil, err
 	}
+	// Same dex-prefix routing as cancelOrder for HIP-3 builder coins.
+	exchange, err := c.ExchangeForCoin(ctx, coin)
+	if err != nil {
+		return nil, err
+	}
 
 	// The Python SDK's modify_order delegates to bulk_modify_orders_new, so
 	// the wire action is "batchModify"; BulkModifyOrders reproduces it.
-	statuses, err := c.Exchange.BulkModifyOrders(ctx, []hyperliquid.ModifyOrderRequest{{
+	statuses, err := exchange.BulkModifyOrders(ctx, []hyperliquid.ModifyOrderRequest{{
 		Oid: &oid,
 		Order: hyperliquid.CreateOrderRequest{
 			Coin:       coin,

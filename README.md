@@ -172,10 +172,11 @@ The two TWAP tools are listed and always fail in both implementations
 | Coin names | remapped through the SDK's startup `name_to_coin` (spot aliases resolve; unknown names raise `KeyError`) | forwarded verbatim — identical for perps |
 | Endpoint selection | mainnet/testnet from `HYPERLIQUID_TESTNET` | plus the `HYPERLIQUID_BASE_URL` override |
 | Tool set | 23 tools | 23 + 2 HIP-3 read extensions |
+| HIP-3 builder-DEX orders | rejected (asset IDs ≥ 110000 fail main-meta validation; `xyz:CL`-style coins unresolvable) | supported through the parity order tools via dex-scoped SDK exchanges (see below) |
 
 ## HIP-3 builder perp DEXs (extension)
 
-Beyond parity: read-only access to Hyperliquid's
+Beyond parity: access to Hyperliquid's
 [HIP-3](https://hyperliquid.gitbook.io/hyperliquid-docs/hyperliquid-improvement-proposals-hips/hip-3-builder-deployed-perpetuals)
 builder-deployed perp DEXs:
 
@@ -186,8 +187,15 @@ Example: *"What can I trade on the xyz DEX?"* → the model calls
 `hyperliquid_get_dex_meta` and gets the universe plus `assetIdBase`
 (`100000 + perpDexIndex × 10000`) for constructing builder asset IDs.
 
-Trading on builder DEXs (hip3-trade) and HIP-4 outcome-market reads are
-planned modules.
+Trading on builder DEXs (hip3-trade) works through the parity order tools:
+`place_order`/`place_bracket_order` accept builder asset IDs (≥ 110000,
+validated against the target DEX's meta instead of the main one), and
+`cancel_order`/`modify_order` route dex-prefixed coin names (e.g. `xyz:CL`)
+to that DEX — as does `cancel_all_orders` with its `dex` param. All builder
+actions are still signed by the go-hyperliquid SDK, via a dex-scoped
+`Exchange` built from that DEX's freshly fetched meta.
+
+HIP-4 outcome-market reads are a planned module.
 
 ## Documentation
 
