@@ -19,8 +19,9 @@ const (
 
 // All returns every tool with its handler: the 23 Python-parity tools in the
 // reference server's list_tools order — account (§1), orders (§2), queries
-// (§3), market (§4), vault (§5), utility (§6) — followed by the post-parity
-// extension groups (HIP-3/4).
+// (§3), market (§4), vault (§5), utility (§6) — plus the post-parity
+// extensions: the trailing-stop tool inside §2 (reference working tree,
+// D-15) and the HIP-3/4 groups last.
 func All(c *hl.Client) []server.ServerTool {
 	var out []server.ServerTool
 	out = append(out, accountTools(c)...)

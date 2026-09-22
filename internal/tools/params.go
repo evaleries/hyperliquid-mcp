@@ -1,5 +1,6 @@
 // Package tools implements the 23 MCP tools with parity to the Python
-// reference server. Files mirror the section layout of server.py.
+// reference server, plus post-parity extensions (trailing stop, HIP-3).
+// Files mirror the section layout of server.py.
 package tools
 
 import (

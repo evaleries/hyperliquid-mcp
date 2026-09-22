@@ -147,10 +147,13 @@ func (c *Client) builderExchange(
 	)
 	// Builder exchanges are built per call, so their nonce counters start
 	// cold; seed from the process-wide floor to keep nonces strictly
-	// increasing across instances (the API rejects reused nonces). Each
-	// scoped exchange signs exactly one action, so the seed+1 allocation
-	// cannot collide.
+	// increasing across instances (the API rejects reused nonces). The SDK
+	// treats the seed as the last USED nonce and allocates seed+1, so reserve
+	// that value on the floor as well: RawExchange consumes floor values
+	// directly, and an unreserved seed+1 could be handed out twice within the
+	// same millisecond.
 	ex.SetLastNonce(c.nextNonceSeed())
+	c.nextNonceSeed() // reserve seed+1, which the SDK's first action consumes
 	return ex, nil
 }
 

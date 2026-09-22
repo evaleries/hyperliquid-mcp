@@ -49,9 +49,9 @@ func TestRawInfoRefusesRedirect(t *testing.T) {
 // forwarded into the MCP client's context.
 func TestRawInfoBodySizeCap(t *testing.T) {
 	const cap = 1 << 10
-	restore := maxInfoResponseBytes
-	maxInfoResponseBytes = cap
-	t.Cleanup(func() { maxInfoResponseBytes = restore })
+	restore := maxAPIResponseBytes
+	maxAPIResponseBytes = cap
+	t.Cleanup(func() { maxAPIResponseBytes = restore })
 
 	var bodyLen int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -90,9 +90,9 @@ func TestRawInfoStopsReadingPastCap(t *testing.T) {
 		chunk = 64 << 10
 		total = 64 << 20
 	)
-	restore := maxInfoResponseBytes
-	maxInfoResponseBytes = cap
-	t.Cleanup(func() { maxInfoResponseBytes = restore })
+	restore := maxAPIResponseBytes
+	maxAPIResponseBytes = cap
+	t.Cleanup(func() { maxAPIResponseBytes = restore })
 
 	served := make(chan int, 1)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

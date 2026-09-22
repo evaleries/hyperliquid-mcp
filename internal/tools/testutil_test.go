@@ -37,10 +37,13 @@ func testMetaFixture() map[string]any {
 	}
 }
 
-// recordedRequest captures one HTTP call to the fake API.
+// recordedRequest captures one HTTP call to the fake API. Raw is the
+// undecoded request body, for assertions on JSON key order (the decoded
+// Payload map loses it).
 type recordedRequest struct {
 	Path    string
 	Payload map[string]any
+	Raw     string
 }
 
 // fakeAPI is an httptest server that answers the SDK's eager meta/spotMeta
@@ -119,7 +122,7 @@ func (f *fakeAPI) serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	f.mu.Lock()
-	f.requests = append(f.requests, recordedRequest{Path: r.URL.Path, Payload: payload})
+	f.requests = append(f.requests, recordedRequest{Path: r.URL.Path, Payload: payload, Raw: string(body)})
 	f.mu.Unlock()
 
 	if r.URL.Path == "/info" && payload["type"] == "meta" {

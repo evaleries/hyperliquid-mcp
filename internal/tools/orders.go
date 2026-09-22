@@ -16,7 +16,10 @@ import (
 // Order Management (server.py §2). All signing paths go through the SDK;
 // exchange envelopes are rebuilt as Python-shaped maps; SDK error promotion
 // is suppressed when an HTTP response exists. TWAP tools remain listed but
-// always fail.
+// always fail. hyperliquid_place_trailing_stop_order registers between
+// bracket and cancel, its source position in the reference's working tree
+// (D-15; the tools/list wire order is alphabetical under mcp-go). Its
+// implementation lives in trailing.go.
 
 func orderTools(c *hl.Client) []server.ServerTool {
 	return []server.ServerTool{
@@ -54,6 +57,32 @@ func orderTools(c *hl.Client) []server.ServerTool {
 			}, "asset", "isBuy", "size", "takeProfitPrice", "stopLossPrice"),
 			func(ctx context.Context, args map[string]any) (map[string]any, error) {
 				return placeBracketOrder(ctx, c, args)
+			},
+		),
+		tool(
+			"hyperliquid_place_trailing_stop_order",
+			"Place a trailing stop order on Hyperliquid. The trigger price follows the mark price as it moves "+
+				"in your favor and submits a market order for the given size once the mark price retraces by the "+
+				"specified amount from the watermark (highest mark since activation for a sell, lowest for a buy). "+
+				"Commonly used to close an existing position (set reduceOnly=true): a sell trails the highest mark "+
+				"price and closes a long; a buy trails the lowest mark price and closes a short. "+
+				"Use asset index from get_meta (e.g., 0=BTC, 1=ETH, 5=SOL). Minimum order value is $10.",
+			schema(map[string]any{
+				"asset":       intProp("Asset index (e.g., 0 for BTC, 1 for ETH, 5 for SOL). Use hyperliquid_get_meta to get the full list.", int64ptr(0)),
+				"isBuy":       map[string]any{"type": "boolean", "description": "True for a buy trailing stop (closes a short or opens a long), false for a sell trailing stop (closes a long or opens a short)"},
+				"size":        strProp("Order size/quantity as a string (e.g., '0.1' for 0.1 BTC). Ensure size * price >= $10."),
+				"retracement": strProp("Reversal from the watermark required to trigger the market order. Interpreted according to retracementUnit: a percentage (e.g., '1.5' for 1.5%) or a fixed price distance (e.g., '10' for $10)."),
+				"retracementUnit": map[string]any{
+					"type":        "string",
+					"description": "Unit of the retracement: 'percent' for a percentage of the watermark price, 'quote' for a fixed price distance in quote currency (USD)",
+					"enum":        []string{"percent", "quote"},
+					"default":     "percent",
+				},
+				"activationPrice": strProp("Optional. Mark price at which trailing begins. If omitted, tracking starts immediately from the current mark price."),
+				"reduceOnly":      boolPropDefault("Whether this is a reduce-only order (only closes existing positions)", false),
+			}, "asset", "isBuy", "size", "retracement"),
+			func(ctx context.Context, args map[string]any) (map[string]any, error) {
+				return placeTrailingStopOrder(ctx, c, args)
 			},
 		),
 		tool(

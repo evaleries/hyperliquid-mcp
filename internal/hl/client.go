@@ -48,12 +48,13 @@ type Client struct {
 	http *http.Client
 }
 
-// maxInfoResponseBytes caps RawInfo response bodies (security review
-// SEC-DOS-002): a malfunctioning endpoint must not exhaust the process or
-// flood the MCP client's context. 64 MiB is far above any real /info body.
+// maxAPIResponseBytes caps RawInfo/RawExchange response bodies (security
+// review SEC-DOS-002): a malfunctioning endpoint must not exhaust the process
+// or flood the MCP client's context. 64 MiB is far above any real /info or
+// /exchange body.
 // A var, not a const, so the boundary is testable without moving 64 MiB
 // through a test server; nothing outside tests reassigns it.
-var maxInfoResponseBytes int64 = 64 << 20
+var maxAPIResponseBytes int64 = 64 << 20
 
 // hardenedHTTPClient is shared by RawInfo and the SDK (injected via options):
 // redirects are refused (SEC-REDIRECT-001 — a cross-host 307/308 would
@@ -135,17 +136,25 @@ func (c *Client) RawInfo(ctx context.Context, payload map[string]any) (json.RawM
 	if err != nil {
 		return nil, fmt.Errorf("info request failed: %w", err)
 	}
+	return readAPIResponse(resp, "info")
+}
+
+// readAPIResponse drains a capped API response body and enforces the 200
+// contract, shared by RawInfo and RawExchange so the SEC-DOS-002 cap and the
+// status-error shape live in exactly one place. endpoint names the endpoint
+// in error messages ("info" / "exchange").
+func readAPIResponse(resp *http.Response, endpoint string) (json.RawMessage, error) {
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxInfoResponseBytes+1))
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxAPIResponseBytes+1))
 	if err != nil {
-		return nil, fmt.Errorf("failed to read info response: %w", err)
+		return nil, fmt.Errorf("failed to read %s response: %w", endpoint, err)
 	}
-	if int64(len(respBody)) > maxInfoResponseBytes {
-		return nil, fmt.Errorf("info response exceeds %d bytes", maxInfoResponseBytes)
+	if int64(len(respBody)) > maxAPIResponseBytes {
+		return nil, fmt.Errorf("%s response exceeds %d bytes", endpoint, maxAPIResponseBytes)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("info request failed with status %d: %s", resp.StatusCode, truncate(respBody, 256))
+		return nil, fmt.Errorf("%s request failed with status %d: %s", endpoint, resp.StatusCode, truncate(respBody, 256))
 	}
 	return json.RawMessage(respBody), nil
 }

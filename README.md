@@ -55,7 +55,7 @@ Example MCP client config:
 
 ## Available tools
 
-The same 23 tools as the Python server, plus 2 HIP-3 additions.
+The same 23 tools as the Python server, plus a trailing-stop addition and 2 HIP-3 additions.
 
 **Account**
 
@@ -67,6 +67,7 @@ The same 23 tools as the Python server, plus 2 HIP-3 additions.
 
 - `hyperliquid_place_order` — place a single order (minimum value $10; use the asset index from `get_meta`)
 - `hyperliquid_place_bracket_order` — entry + take-profit + stop-loss in one atomic batch
+- `hyperliquid_place_trailing_stop_order` — trailing stop: trigger follows the mark price and fires a market order on retracement
 - `hyperliquid_cancel_order` — cancel an order by coin name and order ID (`oid`)
 - `hyperliquid_cancel_all_orders` — cancel all open orders for the user
 - `hyperliquid_modify_order` — modify an existing order
@@ -101,6 +102,16 @@ The same 23 tools as the Python server, plus 2 HIP-3 additions.
 
 - `hyperliquid_get_perp_dexs` — list builder-deployed perp DEXs
 - `hyperliquid_get_dex_meta` — a builder DEX's asset universe (`dex` defaults to `xyz`; empty string selects the main DEX)
+
+## Trailing stop orders
+
+`hyperliquid_place_trailing_stop_order` places a trailing stop: the trigger price follows the mark price as it moves in your favor, and once the mark reverses from the watermark (highest mark since activation for a sell, lowest for a buy) by the retracement, a market order for the given size is submitted.
+
+- `retracementUnit: "percent"` (default) — retracement is a percentage of the watermark (`"1.5"` = 1.5%)
+- `retracementUnit: "quote"` — retracement is a fixed price distance (`"10"` = $10)
+- `activationPrice` — optional mark price at which trailing begins; omit to start tracking immediately
+
+Set `reduceOnly: true` to only close an existing position. Trailing stops appear in `hyperliquid_get_open_orders` and can be cancelled with `hyperliquid_cancel_order` like any other order.
 
 ## Trading on HIP-3 builder DEXs
 
