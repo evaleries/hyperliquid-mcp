@@ -10,7 +10,10 @@ MCP server (Hyperliquid perpetuals trading over MCP stdio). **Implemented at par
 
 - MCP framework: `github.com/mark3labs/mcp-go` v1.x — do not swap.
 - Hyperliquid SDK: `github.com/sonirico/go-hyperliquid` v0.44+ — do not hand-roll
-  signing/wire-format code.
+  signing/wire-format code. Currently resolved via go.mod `replace` to the
+  `evaleries/go-hyperliquid` fork (`feat/trailing-stop`, branched off v0.44.2)
+  for `Exchange.PlaceTrailingStop`; drop the replace once sonirico ships the
+  `trailingStop` action upstream (see docs/DECISIONS.md D-15).
 - `Info.RecentTrades` does not exist in that SDK — use the raw `POST /info` helper
   (`hl.Client.RawInfo`).
 - TWAP tools are intentionally unimplemented stubs (parity with Python).

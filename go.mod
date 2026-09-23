@@ -54,3 +54,5 @@ require (
 	golang.org/x/text v0.39.0 // indirect
 	howett.net/plist v1.0.1 // indirect
 )
+
+replace github.com/sonirico/go-hyperliquid => github.com/evaleries/go-hyperliquid v0.44.3-0.20260923064246-4404cfe0236f

@@ -2,46 +2,25 @@ package tools
 
 // Trailing stop (post-parity extension).
 //
-// Hyperliquid's trailing stop is so new that neither the API docs nor any
-// SDK covers it: the reference implementation (Python server.py working
-// tree) reverse-engineered the wire format from the Hyperliquid frontend.
-// It is a standalone "trailingStop" exchange action — not an orderType
-// inside the regular "order" action — signed with standard L1 action
-// signing. Cancellation works through the existing cancel action, so
-// cancel_order / cancel_all_orders need no changes. See docs/DECISIONS.md
-// D-15.
+// Hyperliquid's trailing stop is a standalone "trailingStop" exchange action
+// — not an orderType inside the regular "order" action — reverse-engineered
+// from the Hyperliquid frontend (no API docs or upstream SDK coverage yet).
+// All wire-format and signing code lives in the SDK
+// (Exchange.PlaceTrailingStop, currently via the evaleries/go-hyperliquid
+// fork — see go.mod replace and docs/DECISIONS.md D-15); this file only
+// validates arguments with the reference's messages and rebuilds the
+// envelope. Cancellation works through the existing cancel action, so
+// cancel_order / cancel_all_orders need no changes.
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/sonirico/go-hyperliquid"
+
 	"github.com/evaleries/hyperliquid-mcp/internal/hl"
 )
-
-// trailingStopAction is the wire format of the trailingStop exchange action.
-// Field declaration order is load-bearing: L1 signing msgpack-serializes
-// fields in order and the API recomputes the hash from the posted JSON, so
-// both must match the frontend's key order — the same order the Python
-// reference builds its dict in.
-type trailingStopAction struct {
-	Type         string          `json:"type" msgpack:"type"`
-	Asset        int64           `json:"asset" msgpack:"asset"`
-	IsBuy        bool            `json:"isBuy" msgpack:"isBuy"`
-	Sz           string          `json:"sz" msgpack:"sz"`
-	ReduceOnly   bool            `json:"reduceOnly" msgpack:"reduceOnly"`
-	Retracement  retracementWire `json:"retracement" msgpack:"retracement"`
-	ActivationPx *string         `json:"activationPx" msgpack:"activationPx"`
-}
-
-// retracementWire is the trailing retracement spec: exactly one of Pct
-// (percentage of the watermark price, e.g. "1.5000%") or Px (fixed price
-// distance in quote currency, wire float string).
-type retracementWire struct {
-	Pct *string `json:"pct,omitempty" msgpack:"pct,omitempty"`
-	Px  *string `json:"px,omitempty" msgpack:"px,omitempty"`
-}
 
 func placeTrailingStopOrder(ctx context.Context, c *hl.Client, args map[string]any) (map[string]any, error) {
 	asset, err := RequireInt(args, "asset")
@@ -52,7 +31,7 @@ func placeTrailingStopOrder(ctx context.Context, c *hl.Client, args map[string]a
 	if err != nil {
 		return nil, err
 	}
-	action, err := buildTrailingStopAction(args, asset, isBuy)
+	req, err := trailingStopRequest(args, isBuy)
 	if err != nil {
 		return nil, err
 	}
@@ -63,37 +42,34 @@ func placeTrailingStopOrder(ctx context.Context, c *hl.Client, args map[string]a
 	if err != nil {
 		return nil, err
 	}
+	req.Coin = coin
 
-	raw, err := c.RawExchange(ctx, action)
-	if err != nil {
-		return nil, err
+	resp, err := c.Exchange.PlaceTrailingStop(ctx, *req)
+	if resp == nil {
+		return nil, exchangeErr(err)
 	}
-	parsed, err := rawToMap(raw)
-	if err != nil {
-		return nil, err
+	if !resp.Ok {
+		// Same top-level rejection behavior as placeOrder.
+		return nil, fmt.Errorf("order rejected: %s", resp.Err)
 	}
-	// Top-level {"status":"err","response":"reason"}: Python's
-	// _parse_order_response raises on the string "response" value
-	// (AttributeError → error envelope). Mirror with the API's reason, as
-	// placeOrder does.
-	if status, _ := parsed["status"].(string); status == "err" {
-		return nil, fmt.Errorf("order rejected: %v", parsed["response"])
-	}
-	orderInfo, err := ParseOrderResponse(parsed)
+	data := ExchangeDataMap(resp.Status, resp.Type, OrderStatusesToMaps(resp.Data.Statuses))
+	orderInfo, err := ParseOrderResponse(data)
 	if err != nil {
 		return nil, err
 	}
 	return map[string]any{
 		"message":       fmt.Sprintf("Trailing stop order placed for %s", coin),
-		"data":          json.RawMessage(raw),
+		"data":          data,
 		"orderInfo":     orderInfo,
 		"requestParams": args,
 	}, nil
 }
 
-// buildTrailingStopAction mirrors the reference's _build_trailing_stop_action:
-// same validation messages, same wire shape.
-func buildTrailingStopAction(args map[string]any, asset int64, isBuy bool) (*trailingStopAction, error) {
+// trailingStopRequest validates the tool arguments into the SDK request,
+// mirroring the reference's _build_trailing_stop_action validation order and
+// messages. Wire formatting (floatToWire, "1.5000%" rendering) happens
+// inside the SDK.
+func trailingStopRequest(args map[string]any, isBuy bool) (*hyperliquid.TrailingStopOrderRequest, error) {
 	unit := "percent"
 	if v, present := args["retracementUnit"]; present {
 		s, ok := v.(string)
@@ -110,10 +86,6 @@ func buildTrailingStopAction(args map[string]any, asset int64, isBuy bool) (*tra
 	if size <= 0 {
 		return nil, fmt.Errorf("Invalid size: %v. Must be positive.", args["size"])
 	}
-	sz, err := hl.FloatToWire(size)
-	if err != nil {
-		return nil, err
-	}
 
 	retracement, err := FloatParam(args, "retracement")
 	if err != nil {
@@ -122,24 +94,17 @@ func buildTrailingStopAction(args map[string]any, asset int64, isBuy bool) (*tra
 	if retracement <= 0 {
 		return nil, fmt.Errorf("Invalid retracement: %v. Must be positive.", args["retracement"])
 	}
-	var retrWire retracementWire
+	var retr hyperliquid.TrailingStopRetracement
 	if unit == "percent" {
-		// Percent retracement is sent as a string with 4 decimals and a '%'
-		// suffix (e.g. "1.5000%"), like the reference's f"{v:.4f}%".
-		pct := fmt.Sprintf("%.4f%%", retracement)
-		retrWire.Pct = &pct
+		retr.Percent = &retracement
 	} else {
-		px, err := hl.FloatToWire(retracement)
-		if err != nil {
-			return nil, err
-		}
-		retrWire.Px = &px
+		retr.PriceDistance = &retracement
 	}
 
-	// Absent, null, or blank activation price → null (tracking starts
+	// Absent, null, or blank activation price → nil (tracking starts
 	// immediately), mirroring the reference's `str(x).strip() != ""` guard;
 	// non-string numbers always apply and are accepted via the same coercion.
-	var activationPx *string
+	var activationPx *float64
 	if v, present := args["activationPrice"]; present && v != nil {
 		s, isStr := v.(string)
 		if blank := isStr && strings.TrimSpace(s) == ""; !blank {
@@ -147,21 +112,15 @@ func buildTrailingStopAction(args map[string]any, asset int64, isBuy bool) (*tra
 			if err != nil {
 				return nil, fmt.Errorf("invalid activationPrice parameter: %v. Must be a valid number.", v)
 			}
-			w, err := hl.FloatToWire(f)
-			if err != nil {
-				return nil, err
-			}
-			activationPx = &w
+			activationPx = &f
 		}
 	}
 
-	return &trailingStopAction{
-		Type:         "trailingStop",
-		Asset:        asset,
+	return &hyperliquid.TrailingStopOrderRequest{
 		IsBuy:        isBuy,
-		Sz:           sz,
+		Size:         size,
 		ReduceOnly:   OptBool(args, "reduceOnly", false),
-		Retracement:  retrWire,
+		Retracement:  retr,
 		ActivationPx: activationPx,
 	}, nil
 }
